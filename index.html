@@ -23,9 +23,15 @@
 
     <!-- Status bar: current km + locate button -->
     <div id="status-bar">
-      <div id="current-km">—</div>
+      <div class="km-info">
+        <div id="current-km">—</div>
+        <div id="remaining-km" class="hidden"></div>
+      </div>
       <button id="btn-locate" class="locate-btn">📍 Localiser</button>
     </div>
+
+    <!-- Dashboard: prochain POI par catégorie (hidden until position known) -->
+    <div id="next-by-type" class="hidden"></div>
 
     <!-- Off-route warning (hidden by default) -->
     <div id="offroute-banner" class="banner banner-warn hidden">
@@ -106,6 +112,11 @@
 
       <!-- Reload / clear cached data -->
       <button id="btn-reload-data" class="action-btn danger">🗑️ Effacer et recharger</button>
+
+      <h2>Application</h2>
+      <!-- Force full app update: clears SW caches + IndexedDB, reloads fresh -->
+      <button id="btn-force-update" class="action-btn">🔄 Forcer la mise à jour de l'app</button>
+      <p class="hint">Après un déploiement : efface le cache du navigateur et recharge l'app depuis le serveur.</p>
 
       <h2>Position manuelle</h2>
       <div class="manual-km-row">

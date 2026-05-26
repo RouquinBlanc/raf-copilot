@@ -9,6 +9,7 @@
  * @typedef {Object} TrackPoint
  * @property {number} lat
  * @property {number} lon
+ * @property {number} ele  — elevation in metres
  */
 
 /**
@@ -45,7 +46,8 @@ export function parseGpx(gpxText) {
     const lat = parseFloat(el.getAttribute('lat'))
     const lon = parseFloat(el.getAttribute('lon'))
     if (!isNaN(lat) && !isNaN(lon)) {
-      track.push({ lat, lon })
+      const ele = parseFloat(el.querySelector('ele')?.textContent ?? '0') || 0
+      track.push({ lat, lon, ele })
     }
   }
 

@@ -3,8 +3,11 @@
  *
  * No external libraries. Pure Haversine + dot-product projection.
  *
- * Coordinate convention throughout: { lat, lon } in decimal degrees.
+ * Coordinate convention throughout: { lat, lon, ele } in decimal degrees / metres.
  */
+
+/** Bump this whenever the stored data structure changes to force re-processing. */
+export const DATA_VERSION = '2'
 
 const EARTH_RADIUS_M = 6_371_000  // metres
 
@@ -14,10 +17,6 @@ const rad = (d) => (d * Math.PI) / 180
 /**
  * Haversine great-circle distance in metres.
  * Accurate to ~0.1% for distances under 1000 km.
- *
- * @param {number} lat1 @param {number} lon1
- * @param {number} lat2 @param {number} lon2
- * @returns {number} distance in metres
  */
 export function haversineM(lat1, lon1, lat2, lon2) {
   const dLat = rad(lat2 - lat1)
@@ -30,50 +29,65 @@ export function haversineM(lat1, lon1, lat2, lon2) {
 
 /**
  * Build the cumulative-distance array (metres) for an ordered track.
+ * cumM[0] = 0, cumM[i] = cumM[i-1] + haversine(track[i-1], track[i])
  *
- * cumKm[0] = 0, cumKm[i] = cumKm[i-1] + distance(track[i-1], track[i])
- *
- * @param {Array<{lat:number,lon:number}>} track
- * @returns {Float64Array} cumulative distances in metres, same length as track
+ * @param {Array<{lat,lon}>} track
+ * @returns {Float64Array}
  */
 export function buildCumDistances(track) {
   const cum = new Float64Array(track.length)
   for (let i = 1; i < track.length; i++) {
-    const { lat: la, lon: lo } = track[i - 1]
-    const { lat: lb, lon: lb2 } = track[i]
-    cum[i] = cum[i - 1] + haversineM(la, lo, lb, lb2)
+    cum[i] = cum[i - 1] + haversineM(
+      track[i - 1].lat, track[i - 1].lon,
+      track[i].lat,     track[i].lon
+    )
   }
   return cum
 }
 
 /**
- * Snap each waypoint to the nearest track point and assign `routeKm`.
+ * Build the cumulative positive-elevation-gain array (metres) for an ordered track.
+ * Only upward steps are counted (D+ / dénivelé positif).
  *
- * Uses a cosine-latitude-corrected squared Euclidean scan (no sqrt needed
- * for finding the minimum). Then refines with sub-segment interpolation
- * on the two adjacent segments for sub-45m precision.
+ * cumD[0] = 0, cumD[i] = cumD[i-1] + max(0, track[i].ele - track[i-1].ele)
  *
- * @param {Array<{lat,lon,routeKm}>} waypoints   mutated in-place
- * @param {Array<{lat,lon}>}         track
- * @param {Float64Array}             cumM         from buildCumDistances
+ * @param {Array<{ele:number}>} track
+ * @returns {Float64Array}
  */
-export function snapWaypointsToRoute(waypoints, track, cumM) {
+export function buildCumElevGain(track) {
+  const cumD = new Float64Array(track.length)
+  for (let i = 1; i < track.length; i++) {
+    const gain = track[i].ele - track[i - 1].ele
+    cumD[i] = cumD[i - 1] + (gain > 0 ? gain : 0)
+  }
+  return cumD
+}
+
+/**
+ * Snap each waypoint to the nearest track point and assign:
+ *   - wpt.routeKm   — cumulative km from start at snap point
+ *   - wpt.snapIdx   — index of nearest track point (for cumD lookup)
+ *   - wpt.routeCumD — cumulative D+ from start at snap point (metres)
+ *
+ * @param {Array<{lat,lon,routeKm,snapIdx,routeCumD}>} waypoints  mutated in-place
+ * @param {Array<{lat,lon,ele}>}                        track
+ * @param {Float64Array}                                cumM
+ * @param {Float64Array}                                cumD
+ */
+export function snapWaypointsToRoute(waypoints, track, cumM, cumD) {
   for (const wpt of waypoints) {
     const idx = nearestTrackIndex(wpt.lat, wpt.lon, track)
-    // Refine: project onto adjacent segments and take the best result
-    const km = interpolateRouteKm(wpt.lat, wpt.lon, track, cumM, idx)
-    wpt.routeKm = km
+    const km  = interpolateRouteKm(wpt.lat, wpt.lon, track, cumM, idx)
+    wpt.routeKm   = km
+    wpt.snapIdx   = idx
+    wpt.routeCumD = cumD[idx]
   }
   waypoints.sort((a, b) => a.routeKm - b.routeKm)
 }
 
 /**
  * O(n) nearest-track-point scan.
- * Returns the index of the nearest track point (not the interpolated position).
- *
- * Uses squared Euclidean distance in degrees (cosine-corrected for longitude)
- * which avoids the expensive sqrt and is monotone with great-circle distance
- * for small areas.
+ * Uses cosine-corrected squared Euclidean distance (avoids sqrt for the min search).
  *
  * @param {number} lat  @param {number} lon
  * @param {Array<{lat,lon}>} track
@@ -96,47 +110,31 @@ export function nearestTrackIndex(lat, lon, track) {
 }
 
 /**
- * Given a GPS position and the index of its nearest track point,
- * project onto the two adjacent segments and return the interpolated routeKm.
- *
- * @param {number} lat  @param {number} lon
- * @param {Array<{lat,lon}>} track
- * @param {Float64Array} cumM
- * @param {number} nearestIdx
- * @returns {number} routeKm
+ * Given the index of the nearest track point, project GPS onto the two
+ * adjacent segments and return the interpolated cumulative km.
  */
 function interpolateRouteKm(lat, lon, track, cumM, nearestIdx) {
-  let bestKm = cumM[nearestIdx] / 1000
-  let bestDistM = haversineM(lat, lon, track[nearestIdx].lat, track[nearestIdx].lon)
+  let bestKm     = cumM[nearestIdx] / 1000
+  let bestDistM  = haversineM(lat, lon, track[nearestIdx].lat, track[nearestIdx].lon)
 
-  // Check segments: [nearestIdx-1 → nearestIdx] and [nearestIdx → nearestIdx+1]
   const candidates = [nearestIdx - 1, nearestIdx].filter(
     (i) => i >= 0 && i + 1 < track.length
   )
   for (const i of candidates) {
-    const A = track[i]
-    const B = track[i + 1]
-    const result = projectOntoSegment(lat, lon, A, B, cumM[i], cumM[i + 1])
+    const result = projectOntoSegment(lat, lon, track[i], track[i + 1], cumM[i], cumM[i + 1])
     if (result.distM < bestDistM) {
       bestDistM = result.distM
-      bestKm = result.km
+      bestKm    = result.km
     }
   }
   return bestKm
 }
 
 /**
- * Project point P=(lat,lon) onto segment A→B in geographic coordinates.
- * Returns the interpolated cumulative km and perpendicular distance.
- *
- * @param {number} pLat @param {number} pLon
- * @param {{lat,lon}} A   @param {{lat,lon}} B
- * @param {number} cumMA  cumulative distance in metres at A
- * @param {number} cumMB  cumulative distance in metres at B
- * @returns {{ km: number, distM: number }}
+ * Project point P onto segment A→B (geographic coords).
+ * Returns interpolated cumulative km + perpendicular distance.
  */
 function projectOntoSegment(pLat, pLon, A, B, cumMA, cumMB) {
-  // Work in degree-space with cosine correction for lon
   const cosLat = Math.cos(rad((A.lat + B.lat) / 2))
 
   const ax = A.lon * cosLat, ay = A.lat
@@ -145,66 +143,70 @@ function projectOntoSegment(pLat, pLon, A, B, cumMA, cumMB) {
 
   const abx = bx - ax, aby = by - ay
   const apx = px - ax, apy = py - ay
-
   const ab2 = abx * abx + aby * aby
+
   if (ab2 === 0) {
-    // Degenerate segment (A === B)
-    const distM = haversineM(pLat, pLon, A.lat, A.lon)
-    return { km: cumMA / 1000, distM }
+    return { km: cumMA / 1000, distM: haversineM(pLat, pLon, A.lat, A.lon) }
   }
 
   const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / ab2))
-
-  // Foot of perpendicular in degree-space
   const footLon = A.lon + t * (B.lon - A.lon)
   const footLat = A.lat + t * (B.lat - A.lat)
 
-  const distM = haversineM(pLat, pLon, footLat, footLon)
-  const km = (cumMA + t * (cumMB - cumMA)) / 1000
-
-  return { km, distM }
+  return {
+    km:    (cumMA + t * (cumMB - cumMA)) / 1000,
+    distM: haversineM(pLat, pLon, footLat, footLon),
+  }
 }
 
 /**
- * Full pre-processing pipeline: takes raw parsed GPX data and enriches it.
+ * Full pre-processing pipeline.
+ * 1. Cumulative distances (cumM)
+ * 2. Cumulative D+ (cumD)
+ * 3. Snap waypoints → assign routeKm, snapIdx, routeCumD
  *
- * 1. Builds cumulative distances along the track
- * 2. Snaps waypoints to the track and assigns routeKm
- *
- * Returns the data structure stored in IndexedDB.
- *
- * @param {Array<{lat,lon}>}              track
- * @param {Array<{lat,lon,name,sym,...}>}  waypoints
- * @returns {{ track, waypoints, cumM: number[], totalKm: number }}
+ * @param {Array<{lat,lon,ele}>}             track
+ * @param {Array<{lat,lon,name,sym,...}>}     waypoints
+ * @returns {{ version, track, waypoints, cumM, cumD, totalKm, totalD }}
  */
 export function processRoute(track, waypoints) {
   if (track.length === 0) throw new Error('Tracé vide — aucun point de piste trouvé')
 
   const cumM = buildCumDistances(track)
-  snapWaypointsToRoute(waypoints, track, cumM)
+  const cumD = buildCumElevGain(track)
+  snapWaypointsToRoute(waypoints, track, cumM, cumD)
 
   const totalKm = cumM[cumM.length - 1] / 1000
+  const totalD  = Math.round(cumD[cumD.length - 1])   // total D+ in metres
 
-  // Convert Float64Array to plain Array for JSON serialisation
-  return { track, waypoints, cumM: Array.from(cumM), totalKm }
+  return {
+    version: DATA_VERSION,
+    track,
+    waypoints,
+    cumM: Array.from(cumM),
+    cumD: Array.from(cumD),
+    totalKm,
+    totalD,
+  }
 }
 
 /**
- * Given a GPS fix, find the current position along the route (km from start)
- * and the distance in metres from the route.
+ * Given a GPS fix, return:
+ *   - currentKm    — position along the route in km
+ *   - currentCumD  — cumulative D+ in metres from start to current position
+ *   - snapDistM    — distance from GPS to nearest point on route (metres)
  *
  * @param {number} lat  @param {number} lon
  * @param {Array<{lat,lon}>} track
  * @param {number[]} cumM
- * @returns {{ currentKm: number, snapDistM: number }}
+ * @param {number[]} cumD
+ * @returns {{ currentKm: number, currentCumD: number, snapDistM: number }}
  */
-export function gpsToRouteKm(lat, lon, track, cumM) {
-  const idx = nearestTrackIndex(lat, lon, track)
-  const km = interpolateRouteKm(lat, lon, track, cumM, idx)
-
-  // Snap distance: distance from GPS to nearest point on route (metres)
-  // Use haversine to the nearest track point as a fast approximation
+export function gpsToRouteKm(lat, lon, track, cumM, cumD) {
+  const idx     = nearestTrackIndex(lat, lon, track)
+  const km      = interpolateRouteKm(lat, lon, track, cumM, idx)
   const snapDistM = haversineM(lat, lon, track[idx].lat, track[idx].lon)
+  const currentCumD = cumD[idx]
 
-  return { currentKm: km, snapDistM }
+  return { currentKm: km, currentCumD, snapDistM }
 }

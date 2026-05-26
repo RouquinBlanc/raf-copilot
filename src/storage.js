@@ -6,6 +6,7 @@
  */
 
 import { get, set, del } from 'idb-keyval'
+import { DATA_VERSION } from './route.js'
 
 // ── IndexedDB keys ────────────────────────────────────────────────────────────
 
@@ -16,12 +17,15 @@ const KEY_ROUTE_VERSION = 'routeVersion'    // fingerprint of the source GPX
 
 /**
  * Load the processed route data from IndexedDB.
- * Returns null if nothing is cached.
+ * Returns null if nothing is cached OR if the cached data version is outdated.
  *
- * @returns {Promise<{track, waypoints, cumM, totalKm}|null>}
+ * @returns {Promise<{version, track, waypoints, cumM, cumD, totalKm, totalD}|null>}
  */
 export async function loadRouteData() {
-  return (await get(KEY_ROUTE_DATA)) ?? null
+  const data = (await get(KEY_ROUTE_DATA)) ?? null
+  // Invalidate cache if the data structure has changed (new fields added, etc.)
+  if (data && data.version !== DATA_VERSION) return null
+  return data
 }
 
 /**

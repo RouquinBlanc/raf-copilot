@@ -10,26 +10,29 @@
 
 import { loadRouteData, loadSettings, saveLastKm, loadLastKm } from './storage.js'
 import { gpsToRouteKm } from './route.js'
-import { renderTimeline, renderCurrentKm } from './timeline.js'
+import { renderTimeline, renderCurrentKm, renderNextByType } from './timeline.js'
 import { initSettings } from './settings.js'
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let routeData  = null   // { track, waypoints, cumM, totalKm }
-let settings   = {}
-let currentKm  = null
-let wakeLock   = null
+let routeData   = null   // { version, track, waypoints, cumM, cumD, totalKm, totalD }
+let settings    = {}
+let currentKm   = null
+let currentCumD = null   // cumulative D+ in metres at current position
+let wakeLock    = null
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
-const viewTimeline  = document.getElementById('view-timeline')
-const viewSettings  = document.getElementById('view-settings')
-const btnSettings   = document.getElementById('btn-settings')
-const btnLocate     = document.getElementById('btn-locate')
-const poiList       = document.getElementById('poi-list')
-const currentKmEl   = document.getElementById('current-km')
+const viewTimeline   = document.getElementById('view-timeline')
+const viewSettings   = document.getElementById('view-settings')
+const btnSettings    = document.getElementById('btn-settings')
+const btnLocate      = document.getElementById('btn-locate')
+const poiList        = document.getElementById('poi-list')
+const currentKmEl    = document.getElementById('current-km')
+const remainingKmEl  = document.getElementById('remaining-km')
+const nextByTypeEl   = document.getElementById('next-by-type')
 const offrouteBanner = document.getElementById('offroute-banner')
-const noDataBanner  = document.getElementById('no-data-banner')
+const noDataBanner   = document.getElementById('no-data-banner')
 
 // ── View switching ────────────────────────────────────────────────────────────
 
@@ -52,22 +55,32 @@ btnSettings.addEventListener('click', () => {
 // ── Timeline render ───────────────────────────────────────────────────────────
 
 function renderCurrent() {
-  renderCurrentKm(currentKm, currentKmEl)
+  renderCurrentKm(currentKm, routeData?.totalKm ?? null, currentKmEl, remainingKmEl)
 
   const hasData = routeData && routeData.waypoints?.length > 0
   noDataBanner.classList.toggle('hidden', hasData)
 
   if (!hasData || currentKm === null) {
     poiList.innerHTML = ''
+    nextByTypeEl.classList.add('hidden')
     return
   }
 
-  // Filter upcoming POIs by position and enabled types
+  // Build upcoming POI list — enrich with distanceKm and dPlus.
+  // dPlus is null when we don't have a GPS fix yet (currentCumD unknown) —
+  // never fall back to 0, which would wrongly show D+ from km 0.
   const upcoming = routeData.waypoints
     .filter((w) => w.routeKm > currentKm && settings[w.sym] !== false)
-    .map((w) => ({ ...w, distanceKm: w.routeKm - currentKm }))
+    .map((w) => ({
+      ...w,
+      distanceKm: w.routeKm - currentKm,
+      dPlus: currentCumD !== null && w.routeCumD != null
+        ? Math.max(0, Math.round(w.routeCumD - currentCumD))
+        : null,
+    }))
 
   renderTimeline(upcoming, poiList)
+  renderNextByType(upcoming, settings, nextByTypeEl)
 }
 
 // ── GPS ───────────────────────────────────────────────────────────────────────
@@ -78,21 +91,23 @@ function handlePosition(pos) {
   const { latitude, longitude } = pos.coords
 
   if (!routeData) {
-    // We have a GPS fix but no route — just show coordinates
     currentKm = null
-    renderCurrentKm(null, currentKmEl)
+    currentCumD = null
+    renderCurrentKm(null, null, currentKmEl, remainingKmEl)
     return
   }
 
-  const { currentKm: km, snapDistM } = gpsToRouteKm(
+  const result = gpsToRouteKm(
     latitude, longitude,
     routeData.track,
-    routeData.cumM
+    routeData.cumM,
+    routeData.cumD,
   )
 
-  currentKm = km
-  saveLastKm(km)
-  offrouteBanner.classList.toggle('hidden', snapDistM <= OFF_ROUTE_THRESHOLD_M)
+  currentKm   = result.currentKm
+  currentCumD = result.currentCumD
+  saveLastKm(currentKm)
+  offrouteBanner.classList.toggle('hidden', result.snapDistM <= OFF_ROUTE_THRESHOLD_M)
   renderCurrent()
 }
 
@@ -100,8 +115,6 @@ function handlePositionError(err) {
   let msg
   switch (err.code) {
     case err.PERMISSION_DENIED:
-      // PERMISSION_DENIED on HTTP (non-localhost) means Chrome blocked it silently
-      // because geolocation requires a secure context (HTTPS).
       msg = '⛔ GPS refusé — le site doit être ouvert en HTTPS pour accéder à la position.'
       break
     case err.POSITION_UNAVAILABLE:
@@ -121,7 +134,6 @@ function handlePositionError(err) {
 function showGpsError(msg) {
   offrouteBanner.textContent = msg
   offrouteBanner.classList.remove('hidden')
-  // Auto-hide after 8 seconds
   setTimeout(() => offrouteBanner.classList.add('hidden'), 8000)
 }
 
@@ -130,7 +142,6 @@ btnLocate.addEventListener('click', async () => {
     showGpsError('La géolocalisation n\'est pas disponible dans ce navigateur.')
     return
   }
-  // Warn early if we're on plain HTTP (not localhost) — geolocation will be denied
   if (location.protocol === 'http:' && location.hostname !== 'localhost') {
     showGpsError('⛔ GPS bloqué — ouvrez le site en HTTPS (ou déployez sur GitHub Pages).')
     return
@@ -138,8 +149,6 @@ btnLocate.addEventListener('click', async () => {
 
   btnLocate.disabled = true
   btnLocate.textContent = '⏳ Localisation…'
-
-  // Acquire/re-acquire screen wake lock so display stays on
   await requestWakeLock()
 
   navigator.geolocation.getCurrentPosition(
@@ -149,11 +158,7 @@ btnLocate.addEventListener('click', async () => {
       btnLocate.textContent = '📍 Localiser'
     },
     (err) => handlePositionError(err),
-    {
-      enableHighAccuracy: true,
-      timeout: 15_000,
-      maximumAge: 30_000,   // accept a cached fix up to 30s old
-    }
+    { enableHighAccuracy: true, timeout: 15_000, maximumAge: 30_000 }
   )
 })
 
@@ -162,17 +167,12 @@ btnLocate.addEventListener('click', async () => {
 async function requestWakeLock() {
   if (!('wakeLock' in navigator)) return
   try {
-    if (wakeLock && !wakeLock.released) return  // already held
+    if (wakeLock && !wakeLock.released) return
     wakeLock = await navigator.wakeLock.request('screen')
-    wakeLock.addEventListener('release', () => {
-      wakeLock = null
-    })
-  } catch {
-    // Wake lock not granted — non-fatal, app works without it
-  }
+    wakeLock.addEventListener('release', () => { wakeLock = null })
+  } catch { /* non-fatal */ }
 }
 
-// Re-acquire wake lock if page becomes visible again (e.g. after screen timeout)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') requestWakeLock()
 })
@@ -181,6 +181,12 @@ document.addEventListener('visibilitychange', () => {
 
 document.addEventListener('manualKm', (e) => {
   currentKm = e.detail.km
+  // Approximate currentCumD by interpolating cumD at the nearest km position
+  if (routeData?.cumM && routeData?.cumD) {
+    const targetM = currentKm * 1000
+    const idx = routeData.cumM.findIndex((m) => m >= targetM)
+    currentCumD = idx >= 0 ? routeData.cumD[idx] : routeData.cumD[routeData.cumD.length - 1]
+  }
   saveLastKm(currentKm)
   offrouteBanner.classList.add('hidden')
   showView('timeline')
@@ -191,8 +197,8 @@ document.addEventListener('manualKm', (e) => {
 
 function onRouteLoaded(data) {
   routeData = data
+  currentCumD = null   // will be recomputed on next GPS fix or manual km
   renderCurrent()
-  // Switch to timeline so user sees results immediately
   if (data) showView('timeline')
 }
 
@@ -204,20 +210,21 @@ function onSettingsChange(newSettings) {
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 async function boot() {
-  // Init settings (restores toggles, wires GPX load buttons)
   const { settings: s } = initSettings({ onRouteLoaded, onSettingsChange })
   settings = s
 
-  // Load cached route data (if any)
   routeData = await loadRouteData()
-
-  // Restore last known km
   currentKm = loadLastKm()
 
-  // Initial render
+  // If we have a saved km, approximate the cumD from the cumD array
+  if (currentKm !== null && routeData?.cumM && routeData?.cumD) {
+    const targetM = currentKm * 1000
+    const idx = routeData.cumM.findIndex((m) => m >= targetM)
+    currentCumD = idx >= 0 ? routeData.cumD[idx] : null
+  }
+
   renderCurrent()
 
-  // Show no-data nudge if no GPX is loaded yet
   if (!routeData) {
     noDataBanner.classList.remove('hidden')
   }

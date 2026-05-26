@@ -105,12 +105,35 @@ export function initSettings({ onRouteLoaded, onSettingsChange }) {
     }
   })
 
-  // ── Clear + reload ────────────────────────────────────────────────────────
+  // ── Clear route data only ─────────────────────────────────────────────────
   document.getElementById('btn-reload-data').addEventListener('click', async () => {
     if (!confirm('Effacer les données en cache et recharger ?')) return
     await clearRouteData()
     setStatus('Cache effacé. Chargez un nouveau fichier GPX.')
     onRouteLoaded(null)
+  })
+
+  // ── Force full app update (SW cache + IndexedDB + hard reload) ────────────
+  document.getElementById('btn-force-update').addEventListener('click', async () => {
+    if (!confirm('Cela va effacer le cache de l\'app et recharger depuis le serveur. Continuer ?')) return
+
+    // 1. Clear route data from IndexedDB
+    await clearRouteData()
+
+    // 2. Delete all Service Worker caches
+    if ('caches' in window) {
+      const keys = await caches.keys()
+      await Promise.all(keys.map((k) => caches.delete(k)))
+    }
+
+    // 3. Unregister Service Worker so the new version is fetched fresh
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map((r) => r.unregister()))
+    }
+
+    // 4. Hard reload — browser fetches everything from network
+    location.reload()
   })
 
   // ── Manual km override ────────────────────────────────────────────────────

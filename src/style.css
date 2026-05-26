@@ -97,14 +97,51 @@ header {
   gap: 12px;
 }
 
+/* Stacks current-km and remaining-km vertically */
+.km-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 #current-km {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--text);
-  min-width: 8ch;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 #current-km.unknown { color: var(--text-muted); }
+
+#remaining-km {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Dashboard: prochain par type ─────────────────────────────────────────── */
+#next-by-type {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.nbt-chip {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  white-space: nowrap;
+  color: var(--text);
+}
 
 .locate-btn {
   background: var(--accent);
@@ -174,32 +211,34 @@ header {
 .poi-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px 0 16px;
-  min-height: var(--row-min-h);
+  gap: 14px;
+  padding: 0 14px 0 20px;
+  min-height: 76px;   /* taller rows — easier to tap and read while riding */
 }
 
 .poi-icon {
-  font-size: 1.4rem;
+  font-size: 1.8rem;
   flex-shrink: 0;
-  width: 2rem;
+  width: 2.2rem;
   text-align: center;
 }
 
 .poi-name {
   flex: 1;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Distance — the most important value, read at a glance */
 .poi-dist {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   flex-shrink: 0;
+  letter-spacing: -0.02em;
 }
 
 /* Colour the distance text to match the type */
@@ -210,9 +249,20 @@ header {
 .type-checkpoint .poi-dist { color: var(--c-checkpoint); }
 .type-other .poi-dist      { color: var(--c-other); }
 
+/* D+ badge — secondary but critical for effort planning */
+.poi-dplus {
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.poi-dplus.dplus-low    { color: var(--text-muted); }
+.poi-dplus.dplus-medium { color: var(--text); }
+.poi-dplus.dplus-high   { color: var(--c-checkpoint); }  /* amber = effort warning */
+
 /* Chevron indicator — rotates when open */
 .poi-chevron {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   color: var(--text-muted);
   flex-shrink: 0;
   transition: transform 0.2s ease;
