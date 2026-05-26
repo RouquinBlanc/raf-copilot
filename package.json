@@ -1,0 +1,20 @@
+{
+  "name": "raf-copilot",
+  "version": "0.1.0",
+  "description": "Companion web app for ultra-cycling races — offline POI timeline from GPX",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && gh-pages -d dist"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5",
+    "vite-plugin-pwa": "^1.3.0",
+    "gh-pages": "^6.3.0"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.1"
+  }
+}
