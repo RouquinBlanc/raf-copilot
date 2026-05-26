@@ -100,7 +100,9 @@ function handlePositionError(err) {
   let msg
   switch (err.code) {
     case err.PERMISSION_DENIED:
-      msg = '⛔ Permission GPS refusée — activez la localisation dans les paramètres du navigateur.'
+      // PERMISSION_DENIED on HTTP (non-localhost) means Chrome blocked it silently
+      // because geolocation requires a secure context (HTTPS).
+      msg = '⛔ GPS refusé — le site doit être ouvert en HTTPS pour accéder à la position.'
       break
     case err.POSITION_UNAVAILABLE:
       msg = '📡 Position GPS indisponible — réessayez en extérieur.'
@@ -111,14 +113,26 @@ function handlePositionError(err) {
     default:
       msg = `Erreur GPS : ${err.message}`
   }
-  alert(msg)
+  showGpsError(msg)
   btnLocate.disabled = false
   btnLocate.textContent = '📍 Localiser'
 }
 
+function showGpsError(msg) {
+  offrouteBanner.textContent = msg
+  offrouteBanner.classList.remove('hidden')
+  // Auto-hide after 8 seconds
+  setTimeout(() => offrouteBanner.classList.add('hidden'), 8000)
+}
+
 btnLocate.addEventListener('click', async () => {
   if (!navigator.geolocation) {
-    alert('La géolocalisation n\'est pas disponible dans ce navigateur.')
+    showGpsError('La géolocalisation n\'est pas disponible dans ce navigateur.')
+    return
+  }
+  // Warn early if we're on plain HTTP (not localhost) — geolocation will be denied
+  if (location.protocol === 'http:' && location.hostname !== 'localhost') {
+    showGpsError('⛔ GPS bloqué — ouvrez le site en HTTPS (ou déployez sur GitHub Pages).')
     return
   }
 

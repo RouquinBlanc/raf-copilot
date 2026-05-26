@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 export default defineConfig({
   // Set base to repo name for GitHub Pages deployment
@@ -7,6 +8,9 @@ export default defineConfig({
   base: '/raf-copilot/',
 
   plugins: [
+    // HTTPS for local dev — Chrome on Android requires HTTPS for geolocation
+    basicSsl(),
+
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
