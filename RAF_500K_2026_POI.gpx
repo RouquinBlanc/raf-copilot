@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="https://www.komoot.de" schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd http://www.garmin.com/xmlschemas/PowerExtension/v1 http://www.garmin.com/xmlschemas/PowerExtensionv1.xsd http://www.topografix.com/GPX/gpx_style/0/2 http://www.topografix.com/GPX/gpx_style/0/2/gpx_style.xsd" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" xmlns:gpxpx="http://www.garmin.com/xmlschemas/PowerExtension/v1" xmlns:gpx_style="http://www.topografix.com/GPX/gpx_style/0/2">
   <metadata>
-    <name>RAF 500K / 2026 officiel POI</name>
+    <name>RAF 500K /   2026 officiel</name>
     <author>
       <name>gpx.studio</name>
       <link href="https://gpx.studio"/>
@@ -1221,6 +1221,103 @@ building: yes
 fee: no
 wheelchair: yes</desc>
     <sym>Restroom</sym>
+  </wpt>
+  <wpt lat="44.715507" lon="6.7507425">
+    <ele>1202.4360842789329</ele>
+    <name>Eau potable</name>
+    <cmt>amenity: drinking_water
+bottle: yes</cmt>
+    <desc>amenity: drinking_water
+bottle: yes</desc>
+    <sym>Drinking Water</sym>
+  </wpt>
+  <wpt lat="45.392169" lon="6.2659876">
+    <ele>436.2342392758476</ele>
+    <name>Vival</name>
+    <cmt>brand: Vival
+brand:wikidata: Q7937525
+contact:housenumber: 100
+name: Vival
+opening_hours: Tu-Sa 06:30-12:15,15:30-19:00; Su 06:30-12:15
+phone: +33479831509
+shop: supermarket
+website: https://magasins.vival.fr/fr/s/vival-saint-remy-de-maurienne</cmt>
+    <desc>brand: Vival
+brand:wikidata: Q7937525
+contact:housenumber: 100
+name: Vival
+opening_hours: Tu-Sa 06:30-12:15,15:30-19:00; Su 06:30-12:15
+phone: +33479831509
+shop: supermarket
+website: https://magasins.vival.fr/fr/s/vival-saint-remy-de-maurienne</desc>
+    <link href="https://magasins.vival.fr/fr/s/vival-saint-remy-de-maurienne"/>
+    <sym>Convenience Store</sym>
+  </wpt>
+  <wpt lat="45.3435177" lon="6.2907988">
+    <ele>479.8699746768002</ele>
+    <name>Eau potable</name>
+    <cmt>amenity: drinking_water</cmt>
+    <desc>amenity: drinking_water</desc>
+    <sym>Drinking Water</sym>
+  </wpt>
+  <wpt lat="45.3448678" lon="6.2909157">
+    <ele>473.359963004001</ele>
+    <name>Eau potable</name>
+    <cmt>access: yes
+amenity: drinking_water
+description: eau de source canalisée
+fee: no
+wheelchair: yes</cmt>
+    <desc>access: yes
+amenity: drinking_water
+description: eau de source canalisée
+fee: no
+wheelchair: yes</desc>
+    <sym>Drinking Water</sym>
+  </wpt>
+  <wpt lat="44.6588248" lon="6.6482454">
+    <ele>994.1781784683673</ele>
+    <name>Eau potable</name>
+    <cmt>amenity: drinking_water</cmt>
+    <desc>amenity: drinking_water</desc>
+    <sym>Drinking Water</sym>
+  </wpt>
+  <wpt lat="44.6602745" lon="6.6486373">
+    <ele>1009.5419975373433</ele>
+    <name>Eau potable</name>
+    <cmt>amenity: drinking_water</cmt>
+    <desc>amenity: drinking_water</desc>
+    <sym>Drinking Water</sym>
+  </wpt>
+  <wpt lat="44.6609804" lon="6.6504049">
+    <ele>1017.909478806519</ele>
+    <name>Eau potable</name>
+    <cmt>amenity: drinking_water</cmt>
+    <desc>amenity: drinking_water</desc>
+    <sym>Drinking Water</sym>
+  </wpt>
+  <wpt lat="44.6610172" lon="6.6503543">
+    <ele>1018.0916413898119</ele>
+    <name>Toilettes</name>
+    <cmt>amenity: toilets
+drinking_water: yes</cmt>
+    <desc>amenity: toilets
+drinking_water: yes</desc>
+    <sym>Restroom</sym>
+  </wpt>
+  <wpt lat="44.3287832" lon="6.5925962">
+    <ele>1772.5877023084058</ele>
+    <name>Eau potable</name>
+    <cmt>amenity: drinking_water
+bottle: yes</cmt>
+    <desc>amenity: drinking_water
+bottle: yes</desc>
+    <sym>Drinking Water</sym>
+  </wpt>
+  <wpt lat="44.276643" lon="6.579487">
+    <ele>1708.748703814234</ele>
+    <name>Eau</name>
+    <sym>Drinking Water</sym>
   </wpt>
   <trk>
     <name>RAF 500K /   2026 officiel</name>
