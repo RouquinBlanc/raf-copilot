@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <title>RAF Copilot</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <script type="module" crossorigin src="/raf-copilot/assets/index--XEo3-LM.js"></script>
+  <link rel="stylesheet" crossorigin href="/raf-copilot/assets/index-B0m_I-xs.css">
+<link rel="manifest" href="/raf-copilot/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/raf-copilot/registerSW.js"></script></head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────── -->
+  <header>
+    <span class="app-title">🚴 RAF Copilot</span>
+    <button id="btn-settings" class="icon-btn" aria-label="Paramètres">⚙️</button>
+  </header>
+
+  <!-- ── Timeline view (main) ───────────────────────────── -->
+  <section id="view-timeline" class="view active">
+
+    <!-- Status bar: current km + locate button -->
+    <div id="status-bar">
+      <div id="current-km">—</div>
+      <button id="btn-locate" class="locate-btn">📍 Localiser</button>
+    </div>
+
+    <!-- Off-route warning (hidden by default) -->
+    <div id="offroute-banner" class="banner banner-warn hidden">
+      ⚠️ Hors tracé — position imprécise
+    </div>
+
+    <!-- No data nudge (shown when no GPX loaded) -->
+    <div id="no-data-banner" class="banner banner-info hidden">
+      📂 Aucune donnée — chargez un fichier GPX dans les paramètres
+    </div>
+
+    <!-- POI list -->
+    <ol id="poi-list" class="poi-list">
+      <!-- Filled by timeline.js -->
+    </ol>
+
+  </section>
+
+  <!-- ── Settings view ──────────────────────────────────── -->
+  <section id="view-settings" class="view">
+
+    <div class="settings-body">
+
+      <h2>Filtres</h2>
+      <div class="toggle-group">
+        <label class="toggle-row">
+          <span class="toggle-icon">💧</span>
+          <span class="toggle-label">Eau potable</span>
+          <input type="checkbox" data-type="Drinking Water" checked />
+        </label>
+        <label class="toggle-row">
+          <span class="toggle-icon">🛒</span>
+          <span class="toggle-label">Épicerie / Ravitaillement</span>
+          <input type="checkbox" data-type="Convenience Store" checked />
+        </label>
+        <label class="toggle-row">
+          <span class="toggle-icon">🚽</span>
+          <span class="toggle-label">Toilettes</span>
+          <input type="checkbox" data-type="Restroom" checked />
+        </label>
+        <label class="toggle-row">
+          <span class="toggle-icon">🍽️</span>
+          <span class="toggle-label">Restaurant / Café</span>
+          <input type="checkbox" data-type="Restaurant" checked />
+        </label>
+        <label class="toggle-row">
+          <span class="toggle-icon">🏁</span>
+          <span class="toggle-label">Checkpoint</span>
+          <input type="checkbox" data-type="Flag, Blue" checked />
+        </label>
+        <label class="toggle-row">
+          <span class="toggle-icon">🔧</span>
+          <span class="toggle-label">Autres</span>
+          <input type="checkbox" data-type="Other" checked />
+        </label>
+      </div>
+
+      <h2>Source GPX</h2>
+
+      <!-- Option 1: local file -->
+      <div class="gpx-source">
+        <label class="source-label">📁 Fichier local</label>
+        <input type="file" id="gpx-file-input" accept=".gpx" />
+      </div>
+
+      <!-- Option 2: server URL -->
+      <div class="gpx-source">
+        <label class="source-label">🌐 URL serveur</label>
+        <select id="gpx-preset-select">
+          <option value="">— Choisir —</option>
+          <option value="RAF_500K_2026_POI.gpx">RAF 500K 2026 (officiel)</option>
+        </select>
+        <button id="btn-load-url" class="action-btn">Charger</button>
+      </div>
+
+      <!-- GPX status -->
+      <div id="gpx-status" class="gpx-status"></div>
+
+      <!-- Reload / clear cached data -->
+      <button id="btn-reload-data" class="action-btn danger">🗑️ Effacer et recharger</button>
+
+      <h2>Position manuelle</h2>
+      <div class="manual-km-row">
+        <label for="manual-km-input">km actuel :</label>
+        <input type="number" id="manual-km-input" min="0" max="500" step="0.1"
+               placeholder="ex. 152.4" />
+        <button id="btn-apply-manual-km" class="action-btn">Appliquer</button>
+      </div>
+      <p class="hint">Utile si le GPS est indisponible.</p>
+
+    </div>
+  </section>
+
+</body>
+</html>
