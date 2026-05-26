@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <title>RAF Copilot</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <script type="module" crossorigin src="/raf-copilot/assets/index-DEtLUDFh.js"></script>
+  <script type="module" crossorigin src="/raf-copilot/assets/index-Bur0rNa3.js"></script>
   <link rel="stylesheet" crossorigin href="/raf-copilot/assets/index-XixOindu.css">
 <link rel="manifest" href="/raf-copilot/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/raf-copilot/registerSW.js"></script></head>
 <body>
@@ -113,6 +113,11 @@
 
       <!-- Reload / clear cached data -->
       <button id="btn-reload-data" class="action-btn danger">🗑️ Effacer et recharger</button>
+
+      <h2>Application</h2>
+      <!-- Force full app update: clears SW caches + IndexedDB, reloads fresh -->
+      <button id="btn-force-update" class="action-btn">🔄 Forcer la mise à jour de l'app</button>
+      <p class="hint">Après un déploiement : efface le cache du navigateur et recharge l'app depuis le serveur.</p>
 
       <h2>Position manuelle</h2>
       <div class="manual-km-row">
