@@ -15,11 +15,12 @@ import { initSettings } from './settings.js'
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let routeData   = null   // { version, track, waypoints, cumM, cumD, totalKm, totalD }
-let settings    = {}
-let currentKm   = null
-let currentCumD = null   // cumulative D+ in metres at current position
-let wakeLock    = null
+let routeData    = null   // { version, track, waypoints, cumM, cumD, totalKm, totalD }
+let settings     = {}
+let currentKm    = null
+let currentCumD  = null   // cumulative D+ in metres at current position
+let isManualKm   = false  // true when position was set by hand (not GPS)
+let wakeLock     = null
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ const remainingKmEl  = document.getElementById('remaining-km')
 const nextByTypeEl   = document.getElementById('next-by-type')
 const offrouteBanner = document.getElementById('offroute-banner')
 const noDataBanner   = document.getElementById('no-data-banner')
+const manualBadge    = document.getElementById('manual-badge')
 
 // ── View switching ────────────────────────────────────────────────────────────
 
@@ -104,9 +106,11 @@ function handlePosition(pos) {
     routeData.cumD,
   )
 
-  currentKm   = result.currentKm
-  currentCumD = result.currentCumD
+  currentKm    = result.currentKm
+  currentCumD  = result.currentCumD
+  isManualKm   = false   // real GPS fix always clears manual mode
   saveLastKm(currentKm)
+  setManualBadge(false)
   offrouteBanner.classList.toggle('hidden', result.snapDistM <= OFF_ROUTE_THRESHOLD_M)
   renderCurrent()
 }
@@ -174,13 +178,25 @@ async function requestWakeLock() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') requestWakeLock()
+  if (document.visibilityState !== 'visible') return
+  requestWakeLock()
+  // Auto-refresh location when the user comes back to the app,
+  // but only if we have route data, GPS is available, and we're not in manual mode.
+  // Silent: no button feedback, errors are swallowed (user didn't ask for this).
+  if (routeData && navigator.geolocation && !isManualKm) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => handlePosition(pos),
+      () => { /* silent fail — user can always tap Localiser manually */ },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 0 }
+    )
+  }
 })
 
 // ── Manual km override ────────────────────────────────────────────────────────
 
 document.addEventListener('manualKm', (e) => {
-  currentKm = e.detail.km
+  currentKm   = e.detail.km
+  isManualKm  = true
   // Approximate currentCumD by interpolating cumD at the nearest km position
   if (routeData?.cumM && routeData?.cumD) {
     const targetM = currentKm * 1000
@@ -188,9 +204,23 @@ document.addEventListener('manualKm', (e) => {
     currentCumD = idx >= 0 ? routeData.cumD[idx] : routeData.cumD[routeData.cumD.length - 1]
   }
   saveLastKm(currentKm)
+  setManualBadge(true)
   offrouteBanner.classList.add('hidden')
   showView('timeline')
   renderCurrent()
+})
+
+// ── Manual badge helpers ──────────────────────────────────────────────────────
+
+function setManualBadge(visible) {
+  manualBadge.classList.toggle('hidden', !visible)
+}
+
+// Tapping the badge × clears manual mode — next visibility or GPS tap takes over
+manualBadge.addEventListener('click', () => {
+  isManualKm  = false
+  setManualBadge(false)
+  // Don't clear currentKm — keep showing last known position until GPS updates
 })
 
 // ── Settings callbacks ────────────────────────────────────────────────────────
