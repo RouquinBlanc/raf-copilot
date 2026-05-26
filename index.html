@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <title>RAF Copilot</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <script type="module" crossorigin src="/raf-copilot/assets/index-BNtfjMfm.js"></script>
-  <link rel="stylesheet" crossorigin href="/raf-copilot/assets/index-BH7DLS9h.css">
+  <script type="module" crossorigin src="/raf-copilot/assets/index-DEtLUDFh.js"></script>
+  <link rel="stylesheet" crossorigin href="/raf-copilot/assets/index-XixOindu.css">
 <link rel="manifest" href="/raf-copilot/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/raf-copilot/registerSW.js"></script></head>
 <body>
 
@@ -24,9 +24,15 @@
 
     <!-- Status bar: current km + locate button -->
     <div id="status-bar">
-      <div id="current-km">—</div>
+      <div class="km-info">
+        <div id="current-km">—</div>
+        <div id="remaining-km" class="hidden"></div>
+      </div>
       <button id="btn-locate" class="locate-btn">📍 Localiser</button>
     </div>
+
+    <!-- Dashboard: prochain POI par catégorie (hidden until position known) -->
+    <div id="next-by-type" class="hidden"></div>
 
     <!-- Off-route warning (hidden by default) -->
     <div id="offroute-banner" class="banner banner-warn hidden">
